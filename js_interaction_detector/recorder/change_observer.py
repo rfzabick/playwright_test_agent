@@ -3,7 +3,7 @@
 import logging
 from typing import Any
 
-from playwright.async_api import Page
+from playwright.async_api import Page, Request
 
 from js_interaction_detector.recorder.selector_generator import generate_selector
 from js_interaction_detector.recorder.test_generator import (
@@ -99,7 +99,7 @@ class ChangeObserver:
         logger.info("MutationObserver script injected")
 
         # Set up network request listener
-        def on_request(request):
+        def on_request(request: Request) -> None:
             # Filter out static assets
             url = request.url
             if not any(
@@ -120,6 +120,10 @@ class ChangeObserver:
             ):
                 self._network_requests.append({"method": request.method, "url": url})
                 logger.info(f"Network request tracked: {request.method} {url}")
+            else:
+                logger.debug(
+                    f"Network request filtered (static asset): {request.method} {url}"
+                )
 
         self.page.on("request", on_request)
         logger.info("Network request listener attached")

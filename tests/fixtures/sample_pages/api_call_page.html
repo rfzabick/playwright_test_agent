@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Call Test Page</title>
+</head>
+<body>
+    <h1>API Call Test</h1>
+    <button id="fetch-btn">Fetch Data</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('fetch-btn').addEventListener('click', async () => {
+            // Make a fetch request to a mock API endpoint
+            // Using httpbin.org echo endpoint
+            try {
+                const response = await fetch('https://httpbin.org/json', {
+                    method: 'GET'
+                });
+                const data = await response.json();
+                document.getElementById('result').textContent = 'Data loaded';
+            } catch (error) {
+                document.getElementById('result').textContent = 'Error loading data';
+            }
+        });
+    </script>
+</body>
+</html>
