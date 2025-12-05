@@ -140,3 +140,58 @@ class TestTestGenerator:
         self.when_test_is_generated()
         self.then_output_contains(".menu-dropdown")
         self.then_output_contains(".settings-panel")
+
+    def given_selector_with_single_quote(self):
+        self.url = "http://localhost:8080"
+        self.actions = [
+            RecordedAction(
+                action_type="click",
+                selector="button[aria-label='Click']",
+                changes=[
+                    DOMChange(
+                        change_type="added",
+                        selector=".modal",
+                    ),
+                ],
+            ),
+        ]
+
+    def test_escapes_single_quotes_in_selectors(self):
+        """Single quotes in selectors are escaped."""
+        self.given_selector_with_single_quote()
+        self.when_test_is_generated()
+        self.then_output_contains(r"button[aria-label=\'Click\']")
+
+    def given_type_action(self):
+        self.url = "http://localhost:8080"
+        self.actions = [
+            RecordedAction(
+                action_type="type",
+                selector="#username",
+                value="test'user",
+                changes=[],
+            ),
+        ]
+
+    def test_generates_type_action_with_page_fill(self):
+        """Type actions generate page.fill() with escaped values."""
+        self.given_type_action()
+        self.when_test_is_generated()
+        self.then_output_contains("await page.fill('#username', 'test\\'user');")
+
+    def given_press_action(self):
+        self.url = "http://localhost:8080"
+        self.actions = [
+            RecordedAction(
+                action_type="press",
+                selector="#search",
+                value="Enter",
+                changes=[],
+            ),
+        ]
+
+    def test_generates_press_action_with_page_press(self):
+        """Press actions generate page.press()."""
+        self.given_press_action()
+        self.when_test_is_generated()
+        self.then_output_contains("await page.press('#search', 'Enter');")

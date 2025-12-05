@@ -6,6 +6,11 @@ from dataclasses import dataclass
 logger = logging.getLogger(__name__)
 
 
+def _escape_typescript_string(value: str) -> str:
+    """Escape a string for use in TypeScript single-quoted string."""
+    return value.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n")
+
+
 @dataclass
 class DOMChange:
     """A DOM change observation."""
@@ -58,7 +63,7 @@ def generate_test(url: str, actions: list[RecordedAction]) -> str:
         "import { test, expect } from '@playwright/test';",
         "",
         "test('recorded interaction test', async ({ page }) => {",
-        f"  await page.goto('{url}');",
+        f"  await page.goto('{_escape_typescript_string(url)}');",
         "",
     ]
 
@@ -80,11 +85,17 @@ def _generate_action(action: RecordedAction) -> list[str]:
 
     # Generate the action
     if action.action_type == "click":
-        lines.append(f"  await page.click('{action.selector}');")
+        lines.append(f"  await page.click('{_escape_typescript_string(action.selector)}');")
     elif action.action_type == "type":
-        lines.append(f"  await page.fill('{action.selector}', '{action.value}');")
+        escaped_selector = _escape_typescript_string(action.selector)
+        escaped_value = _escape_typescript_string(action.value or "")
+        lines.append(f"  await page.fill('{escaped_selector}', '{escaped_value}');")
     elif action.action_type == "press":
-        lines.append(f"  await page.press('{action.selector}', '{action.value}');")
+        escaped_selector = _escape_typescript_string(action.selector)
+        escaped_value = _escape_typescript_string(action.value or "")
+        lines.append(f"  await page.press('{escaped_selector}', '{escaped_value}');")
+    else:
+        lines.append(f"  // WARNING: Unknown action type '{action.action_type}'")
 
     # Generate assertions for changes
     if not action.changes:
@@ -104,26 +115,33 @@ def _generate_action(action: RecordedAction) -> list[str]:
 
 def _generate_dom_assertion(change: DOMChange) -> list[str]:
     """Generate assertion for a DOM change."""
+    escaped_selector = _escape_typescript_string(change.selector)
     if change.change_type == "added":
-        return [f"  await expect(page.locator('{change.selector}')).toBeVisible();"]
+        return [f"  await expect(page.locator('{escaped_selector}')).toBeVisible();"]
     elif change.change_type == "removed":
-        return [f"  await expect(page.locator('{change.selector}')).toBeHidden();"]
+        return [f"  await expect(page.locator('{escaped_selector}')).toBeHidden();"]
     elif change.change_type == "text_changed":
+        escaped_text = _escape_typescript_string(change.text or "")
         return [
-            f"  await expect(page.locator('{change.selector}')).toHaveText('{change.text}');"
+            f"  await expect(page.locator('{escaped_selector}')).toHaveText('{escaped_text}');"
         ]
     return []
 
 
 def _generate_css_assertion(change: CSSChange) -> list[str]:
     """Generate assertion for a CSS change."""
+    escaped_selector = _escape_typescript_string(change.selector)
+    escaped_property = _escape_typescript_string(change.property)
+    escaped_value = _escape_typescript_string(change.value)
     return [
-        f"  await expect(page.locator('{change.selector}')).toHaveCSS('{change.property}', '{change.value}');"
+        f"  await expect(page.locator('{escaped_selector}')).toHaveCSS('{escaped_property}', '{escaped_value}');"
     ]
 
 
 def _generate_network_assertion(change: NetworkRequest) -> list[str]:
     """Generate assertion for a network request."""
+    escaped_url_pattern = _escape_typescript_string(change.url_pattern)
+    escaped_method = _escape_typescript_string(change.method)
     return [
-        f"  await page.waitForRequest(req => req.url().includes('{change.url_pattern}') && req.method() === '{change.method}');"
+        f"  await page.waitForRequest(req => req.url().includes('{escaped_url_pattern}') && req.method() === '{escaped_method}');"
     ]
