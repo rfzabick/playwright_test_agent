@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head><title>Form with Validation</title></head>
+<body>
+  <form id="signup">
+    <input type="email" id="email" name="email" required />
+    <input type="tel" id="phone" name="phone" placeholder="XXX-XXX-XXXX" />
+    <textarea id="bio" name="bio"></textarea>
+    <button type="submit">Submit</button>
+  </form>
+  <script>
+    document.getElementById('email').addEventListener('blur', function(e) {
+      const value = e.target.value;
+      if (!/.+@.+\..+/.test(value)) {
+        e.target.setCustomValidity('Please enter a valid email');
+      } else {
+        e.target.setCustomValidity('');
+      }
+    });
+
+    document.getElementById('phone').addEventListener('input', function(e) {
+      const value = e.target.value.replace(/\D/g, '');
+      if (value.length > 0) {
+        const formatted = value.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        e.target.value = formatted;
+      }
+    });
+  </script>
+</body>
+</html>
