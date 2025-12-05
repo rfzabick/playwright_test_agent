@@ -119,6 +119,21 @@ class RecordingSession:
         2. For each action, gets the corresponding changes from ChangeObserver
         3. Creates RecordedAction objects combining actions with their changes
         4. Stores them in _recorded_actions list
+
+        LIMITATION (v1): In the current architecture, actions are processed in batch
+        at session exit. This means:
+        - For single action: changes are correctly attributed
+        - For multiple actions: all accumulated changes are attributed to first action,
+          subsequent actions get empty change lists
+
+        This is because:
+        1. Actions have already occurred when this method runs
+        2. Mutations accumulated in browser during all actions
+        3. We can only call after_action() once to collect all accumulated mutations
+        4. Calling before_action() now would clear the mutations we want to collect
+
+        Future improvement: Process actions in real-time by hooking into ActionTracker
+        events and calling before_action()/after_action() for each action as it happens.
         """
         if not self._tracker or not self._observer:
             logger.warning("Tracker or observer not initialized")
@@ -127,9 +142,20 @@ class RecordingSession:
         actions = await self._tracker.get_actions()
         logger.info(f"Processing {len(actions)} pending actions")
 
-        for action_data in actions:
-            # Get changes for this action
-            changes = await self._observer.after_action()
+        if not actions:
+            logger.info("No actions to process")
+            return
+
+        # Collect all accumulated changes once
+        # This captures all mutations since session start
+        all_changes = await self._observer.after_action()
+        logger.info(f"Collected {len(all_changes)} total changes from session")
+
+        # Attribute all changes to first action (v1 limitation)
+        # Subsequent actions get empty change lists
+        for i, action_data in enumerate(actions):
+            # Only first action gets the changes in batch mode
+            changes = all_changes if i == 0 else []
 
             # Create RecordedAction
             recorded = RecordedAction(

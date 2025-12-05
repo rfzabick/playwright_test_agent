@@ -84,7 +84,12 @@ class TestRecordingSession:
 
     @pytest.mark.asyncio
     async def test_records_multiple_actions(self, dropdown_page_url):
-        """Records multiple actions in sequence."""
+        """Records multiple actions in sequence.
+
+        Note: Due to v1 batch processing limitation, all changes are attributed
+        to the first action. This test verifies both actions are recorded, but
+        change attribution is not tested here.
+        """
         # Given: A dropdown page URL
         fixtures_path = Path(__file__).parent.parent / "fixtures" / "sample_pages"
         url = f"file://{fixtures_path}/dropdown_page.html"
@@ -103,3 +108,20 @@ class TestRecordingSession:
             f"Expected 2 actions, got {len(recorded_actions)}"
         )
         assert all(action.action_type == "click" for action in recorded_actions)
+        # Note: In v1, first action gets all changes, second gets none
+        # This is a known limitation documented in _process_pending_actions
+
+    @pytest.mark.asyncio
+    async def test_page_property_raises_outside_context(self, dropdown_page_url):
+        """Accessing page property outside context raises RuntimeError."""
+        # Given: A recording session (not entered)
+        fixtures_path = Path(__file__).parent.parent / "fixtures" / "sample_pages"
+        url = f"file://{fixtures_path}/dropdown_page.html"
+        session = RecordingSession(url, headed=False)
+
+        # When: Attempting to access page property
+        # Then: RuntimeError is raised
+        with pytest.raises(
+            RuntimeError, match="Page not available outside of session context"
+        ):
+            _ = session.page
