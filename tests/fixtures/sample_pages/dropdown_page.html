@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head><title>Dropdown Test</title></head>
+<body>
+  <button id="toggle-btn" onclick="toggleDropdown()">Toggle</button>
+  <div id="dropdown" style="display: none;">
+    <div class="item">Item 1</div>
+    <div class="item">Item 2</div>
+    <div class="item">Item 3</div>
+  </div>
+  <script>
+    function toggleDropdown() {
+      const dropdown = document.getElementById('dropdown');
+      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+  </script>
+</body>
+</html>
