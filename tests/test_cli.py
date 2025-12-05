@@ -152,10 +152,10 @@ class TestCLISubcommands:
 class TestRecordCommand:
     """Test the record command that generates Playwright tests."""
 
-    def given_record_command_with_simple_page(self, fixtures_path):
+    def given_record_command_with_simple_page(self, fixtures_path, tmp_path):
         """Set up record command with simple page."""
         self.url = f"file://{fixtures_path}/simple_form.html"
-        self.output_file = "/tmp/test-recorded.spec.ts"
+        self.output_file = str(tmp_path / "test-recorded.spec.ts")
         self.args = ["record", self.url, "--output", self.output_file, "--headless"]
 
     async def when_cli_is_run_capturing_output(self, capsys):
@@ -183,17 +183,21 @@ class TestRecordCommand:
         assert "recording" in self.captured.err.lower()
 
     @pytest.mark.asyncio
-    async def test_record_command_generates_test_file(self, fixtures_path, capsys):
+    async def test_record_command_generates_test_file(
+        self, fixtures_path, tmp_path, capsys
+    ):
         """Record command in headless mode creates output file."""
-        self.given_record_command_with_simple_page(fixtures_path)
+        self.given_record_command_with_simple_page(fixtures_path, tmp_path)
         await self.when_cli_is_run_capturing_output(capsys)
         self.then_exit_code_is_zero()
         self.then_output_file_exists()
         self.then_output_is_valid_playwright_test()
 
     @pytest.mark.asyncio
-    async def test_record_command_outputs_to_stderr(self, fixtures_path, capsys):
+    async def test_record_command_outputs_to_stderr(
+        self, fixtures_path, tmp_path, capsys
+    ):
         """Record command outputs status messages to stderr."""
-        self.given_record_command_with_simple_page(fixtures_path)
+        self.given_record_command_with_simple_page(fixtures_path, tmp_path)
         await self.when_cli_is_run_capturing_output(capsys)
         self.then_stderr_mentions_recording()

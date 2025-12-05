@@ -98,7 +98,7 @@ class RecordingSession:
             exc_tb: Exception traceback if an exception was raised
         """
         # Process any pending actions before cleanup
-        await self._process_pending_actions()
+        await self.process_pending_actions()
 
         # Close browser and stop playwright
         if self._browser:
@@ -111,7 +111,7 @@ class RecordingSession:
 
         logger.info("Recording session ended")
 
-    async def _process_pending_actions(self) -> None:
+    async def process_pending_actions(self) -> None:
         """Process pending actions by matching them with observed changes.
 
         This method:

@@ -127,7 +127,7 @@ async def run_record(
                 try:
                     while True:
                         await asyncio.sleep(0.1)
-                        await session._process_pending_actions()
+                        await session.process_pending_actions()
                 except asyncio.CancelledError:
                     logger.info("Recording cancelled by user")
                     pass
