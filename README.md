@@ -44,7 +44,7 @@ Example with a local file:
 python -m js_interaction_detector file://$(pwd)/tests/fixtures/sample_pages/form_with_validation.html
 ```
 
-### Record Interactions (Coming Soon)
+### Record Interactions
 
 Record user interactions and generate Playwright tests:
 
@@ -52,14 +52,44 @@ Record user interactions and generate Playwright tests:
 python -m js_interaction_detector record https://example.com
 ```
 
-Options:
-- `--output FILE` - Output path for generated test (default: `./recorded-test.spec.ts`)
-- `--timeout MS` - Settle timeout in milliseconds (default: 2000)
+The browser opens in headed mode. Interact with the page (click buttons, fill forms, etc.), then press `Ctrl+C` to stop recording. The tool generates a TypeScript Playwright test file.
 
-The browser opens, you interact with the page, then press Ctrl+C. The tool generates a TypeScript Playwright test with assertions for:
-- DOM changes (elements appearing/disappearing)
-- CSS changes (colors, visibility)
-- Network requests (API calls)
+Options:
+- `--output FILE`, `-o FILE` - Output path for generated test (default: `./recorded-test.spec.ts`)
+- `--timeout MS`, `-t MS` - Settle timeout in milliseconds (default: 2000)
+- `--headless` - Run in headless mode (for testing/automation)
+
+Example:
+
+```bash
+# Record interactions on localhost app
+python -m js_interaction_detector record http://localhost:8080 -o tests/my-app.spec.ts
+
+# The tool captures:
+# - Click actions → page.click() calls
+# - Form input → page.fill() calls
+# - DOM changes → toBeVisible()/toBeHidden() assertions
+# - CSS changes → toHaveCSS() assertions
+# - API calls → waitForRequest() assertions
+```
+
+Generated test example:
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('recorded interaction test', async ({ page }) => {
+  await page.goto('http://localhost:8080');
+
+  await page.click('[data-testid="menu-btn"]');
+  await expect(page.locator('.dropdown-menu')).toBeVisible();
+
+  await page.click('.menu-item.settings');
+  await expect(page.locator('.settings-panel')).toBeVisible();
+});
+```
+
+**Note:** Recording is single-page only. If you click a link that navigates away, the tool automatically goes back to the original page.
 
 ## Development
 
