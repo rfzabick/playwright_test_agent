@@ -42,6 +42,7 @@ class RecordingSession:
     _recorded_actions: list[RecordedAction] = field(
         default_factory=list, init=False, repr=False
     )
+    _original_url: str | None = field(default=None, init=False, repr=False)
 
     @property
     def page(self) -> Page:
@@ -81,6 +82,10 @@ class RecordingSession:
         await self._tracker.start()
         await self._observer.start()
 
+        # Store original URL and set up navigation handler
+        self._original_url = self.url
+        self._page.on("framenavigated", self._on_navigation)
+
         logger.info("Recording session started")
         return self
 
@@ -110,6 +115,46 @@ class RecordingSession:
             logger.info("Playwright stopped")
 
         logger.info("Recording session ended")
+
+    def _on_navigation(self, frame) -> None:
+        """Handle page navigation - go back to original page.
+
+        Args:
+            frame: The frame that navigated
+        """
+        # This is a sync event handler, so we need to schedule async work
+        # We'll use the page's event loop to schedule the async navigation handling
+        if self._page is None:
+            return
+
+        # Only handle main frame navigation
+        if frame != self._page.main_frame:
+            return
+
+        current_url = self._page.url
+        if current_url != self._original_url and not current_url.startswith("about:"):
+            logger.info(f"Navigation detected to {current_url}, going back")
+            # Schedule the async go_back operation
+            import asyncio
+
+            asyncio.create_task(self._handle_navigation_async())
+
+    async def _handle_navigation_async(self) -> None:
+        """Async handler for navigation - goes back and re-initializes trackers."""
+        try:
+            if self._page is None:
+                return
+
+            await self._page.go_back(wait_until="networkidle")
+
+            # Re-initialize trackers after going back
+            if self._tracker and self._observer:
+                await self._tracker.start()
+                await self._observer.start()
+
+            logger.info("Returned to original page")
+        except Exception as e:
+            logger.warning(f"Could not go back: {e}")
 
     async def process_pending_actions(self) -> None:
         """Process pending actions by matching them with observed changes.

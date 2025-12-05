@@ -125,3 +125,39 @@ class TestRecordingSession:
             RuntimeError, match="Page not available outside of session context"
         ):
             _ = session.page
+
+
+class TestNavigationHandling:
+    """Test that RecordingSession handles page navigation."""
+
+    def given_navigation_page_url(self, fixtures_path):
+        """Set up the URL for navigation test page."""
+        self.url = f"file://{fixtures_path}/navigation_page.html"
+        self.original_title = "Navigation Test"
+
+    async def when_session_handles_navigation(self):
+        """Click a link that navigates away and verify session goes back."""
+        async with RecordingSession(self.url, headed=False) as session:
+            # Click link that would navigate away
+            await session.page.click("#nav-link")
+            await session.page.wait_for_timeout(500)
+            # Session should have gone back
+            self.final_title = await session.page.title()
+            self.recorded_actions = session.get_recorded_actions()
+
+    def then_page_returned_to_original(self):
+        """Verify that the page returned to the original URL."""
+        assert self.final_title == self.original_title
+
+    @pytest.mark.asyncio
+    async def test_goes_back_after_navigation(self):
+        """Session returns to original page after navigation."""
+        # Given: A navigation page URL
+        fixtures_path = Path(__file__).parent.parent / "fixtures" / "sample_pages"
+        self.given_navigation_page_url(fixtures_path)
+
+        # When: Session handles navigation
+        await self.when_session_handles_navigation()
+
+        # Then: Page returned to original
+        self.then_page_returned_to_original()
