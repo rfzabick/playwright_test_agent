@@ -147,3 +147,53 @@ class TestCLISubcommands:
         self.given_help_flag()
         await self.when_cli_is_run_capturing_output(capsys)
         self.then_stderr_mentions_subcommands()
+
+
+class TestRecordCommand:
+    """Test the record command that generates Playwright tests."""
+
+    def given_record_command_with_simple_page(self, fixtures_path):
+        """Set up record command with simple page."""
+        self.url = f"file://{fixtures_path}/simple_form.html"
+        self.output_file = "/tmp/test-recorded.spec.ts"
+        self.args = ["record", self.url, "--output", self.output_file, "--headless"]
+
+    async def when_cli_is_run_capturing_output(self, capsys):
+        """Run the CLI and capture output."""
+        self.exit_code = await run_cli(self.args)
+        self.captured = capsys.readouterr()
+
+    def then_exit_code_is_zero(self):
+        """Verify exit code is 0."""
+        assert self.exit_code == 0
+
+    def then_output_file_exists(self):
+        """Verify output file was created."""
+        assert Path(self.output_file).exists()
+
+    def then_output_is_valid_playwright_test(self):
+        """Verify output contains valid Playwright test structure."""
+        content = Path(self.output_file).read_text()
+        assert "import { test, expect }" in content
+        assert "test('recorded interaction test'" in content
+        assert "await page.goto(" in content
+
+    def then_stderr_mentions_recording(self):
+        """Verify stderr mentions recording."""
+        assert "recording" in self.captured.err.lower()
+
+    @pytest.mark.asyncio
+    async def test_record_command_generates_test_file(self, fixtures_path, capsys):
+        """Record command in headless mode creates output file."""
+        self.given_record_command_with_simple_page(fixtures_path)
+        await self.when_cli_is_run_capturing_output(capsys)
+        self.then_exit_code_is_zero()
+        self.then_output_file_exists()
+        self.then_output_is_valid_playwright_test()
+
+    @pytest.mark.asyncio
+    async def test_record_command_outputs_to_stderr(self, fixtures_path, capsys):
+        """Record command outputs status messages to stderr."""
+        self.given_record_command_with_simple_page(fixtures_path)
+        await self.when_cli_is_run_capturing_output(capsys)
+        self.then_stderr_mentions_recording()
