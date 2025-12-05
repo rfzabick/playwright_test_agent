@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 def _escape_selector_value(value: str) -> str:
     """Escape special characters in CSS selector attribute values."""
-    return value.replace('\\', '\\\\').replace('"', '\\"')
+    return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def generate_selector(element_info: dict) -> tuple[str, bool]:

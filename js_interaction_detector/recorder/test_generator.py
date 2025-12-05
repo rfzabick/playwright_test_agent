@@ -85,7 +85,9 @@ def _generate_action(action: RecordedAction) -> list[str]:
 
     # Generate the action
     if action.action_type == "click":
-        lines.append(f"  await page.click('{_escape_typescript_string(action.selector)}');")
+        lines.append(
+            f"  await page.click('{_escape_typescript_string(action.selector)}');"
+        )
     elif action.action_type == "type":
         escaped_selector = _escape_typescript_string(action.selector)
         escaped_value = _escape_typescript_string(action.value or "")
