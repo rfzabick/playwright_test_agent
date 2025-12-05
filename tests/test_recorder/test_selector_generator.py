@@ -86,3 +86,43 @@ class TestSelectorGenerator:
         self.when_selector_is_generated()
         self.then_selector_is("div")
         self.then_selector_is_fragile()
+
+    def given_element_with_quoted_testid(self):
+        self.element_info = {
+            "tag": "button",
+            "data-testid": 'test"quote',
+        }
+
+    def test_escapes_quotes_in_testid(self):
+        """Quotes in data-testid are properly escaped."""
+        self.given_element_with_quoted_testid()
+        self.when_selector_is_generated()
+        self.then_selector_is('[data-testid="test\\"quote"]')
+        self.then_selector_is_not_fragile()
+
+    def given_element_with_empty_id(self):
+        self.element_info = {
+            "tag": "div",
+            "id": "",
+            "classes": ["container"],
+        }
+
+    def test_empty_id_falls_back_to_classes(self):
+        """Empty string id should fall back to next priority."""
+        self.given_element_with_empty_id()
+        self.when_selector_is_generated()
+        self.then_selector_is("div.container")
+        self.then_selector_is_fragile()
+
+    def given_element_with_whitespace_classes(self):
+        self.element_info = {
+            "tag": "div",
+            "classes": ["  ", "valid", "", "  another  "],
+        }
+
+    def test_filters_whitespace_only_classes(self):
+        """Whitespace-only class names are filtered out."""
+        self.given_element_with_whitespace_classes()
+        self.when_selector_is_generated()
+        self.then_selector_is("div.valid.another")
+        self.then_selector_is_fragile()
