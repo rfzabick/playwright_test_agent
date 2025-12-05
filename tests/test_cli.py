@@ -87,3 +87,63 @@ class TestCLI:
         with patch("sys.stderr", new_callable=StringIO):
             await self.when_cli_is_run()
         self.then_exit_code_is_zero()
+
+
+class TestCLISubcommands:
+    def given_analyze_command(self, fixtures_path):
+        self.url = f"file://{fixtures_path}/form_with_validation.html"
+        self.args = ["analyze", self.url]
+
+    def given_record_command(self, fixtures_path):
+        self.url = f"file://{fixtures_path}/simple_form.html"
+        self.args = ["record", self.url]
+
+    def given_no_subcommand(self, fixtures_path):
+        self.url = f"file://{fixtures_path}/simple_form.html"
+        self.args = [self.url]
+
+    def given_help_flag(self):
+        self.args = ["--help"]
+
+    async def when_cli_is_run_capturing_output(self, capsys):
+        self.exit_code = await run_cli(self.args)
+        self.captured = capsys.readouterr()
+
+    def then_exit_code_is_zero(self):
+        assert self.exit_code == 0
+
+    def then_exit_code_is_nonzero(self):
+        assert self.exit_code != 0
+
+    def then_stdout_is_valid_json(self):
+        output = json.loads(self.captured.out)
+        assert "url" in output
+
+    def then_stderr_mentions_subcommands(self):
+        assert "analyze" in self.captured.err or "analyze" in self.captured.out
+        assert "record" in self.captured.err or "record" in self.captured.out
+
+    @pytest.mark.asyncio
+    async def test_analyze_subcommand_works(self, fixtures_path, capsys):
+        """'analyze' subcommand runs the existing detection."""
+        self.given_analyze_command(fixtures_path)
+        await self.when_cli_is_run_capturing_output(capsys)
+        self.then_exit_code_is_zero()
+        self.then_stdout_is_valid_json()
+
+    @pytest.mark.asyncio
+    async def test_bare_url_still_works_for_backwards_compat(
+        self, fixtures_path, capsys
+    ):
+        """Bare URL without subcommand defaults to analyze."""
+        self.given_no_subcommand(fixtures_path)
+        await self.when_cli_is_run_capturing_output(capsys)
+        self.then_exit_code_is_zero()
+        self.then_stdout_is_valid_json()
+
+    @pytest.mark.asyncio
+    async def test_help_shows_subcommands(self, capsys):
+        """--help shows available subcommands."""
+        self.given_help_flag()
+        await self.when_cli_is_run_capturing_output(capsys)
+        self.then_stderr_mentions_subcommands()

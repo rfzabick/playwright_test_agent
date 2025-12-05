@@ -19,17 +19,77 @@ def setup_logging():
     )
 
 
-def parse_args(args: list[str]) -> argparse.Namespace:
-    """Parse command-line arguments."""
+def create_parser() -> argparse.ArgumentParser:
+    """Create the argument parser with subcommands."""
     parser = argparse.ArgumentParser(
         prog="js-interaction-detector",
-        description="Detect JavaScript-driven input validations on web pages",
+        description="Detect JavaScript-driven interactions on web pages",
     )
-    parser.add_argument(
+    subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # analyze subcommand
+    analyze_parser = subparsers.add_parser(
+        "analyze",
+        help="Analyze a page for input validations (default)",
+    )
+    analyze_parser.add_argument(
         "url",
         help="URL to analyze (http, https, or file://)",
     )
+
+    # record subcommand
+    record_parser = subparsers.add_parser(
+        "record",
+        help="Record interactions and generate Playwright tests",
+    )
+    record_parser.add_argument(
+        "url",
+        help="URL to record (http, https, or file://)",
+    )
+    record_parser.add_argument(
+        "--output",
+        "-o",
+        default="./recorded-test.spec.ts",
+        help="Output path for generated test (default: ./recorded-test.spec.ts)",
+    )
+    record_parser.add_argument(
+        "--timeout",
+        "-t",
+        type=int,
+        default=2000,
+        help="Settle timeout in milliseconds (default: 2000)",
+    )
+
+    return parser
+
+
+def parse_args(args: list[str]) -> argparse.Namespace:
+    """Parse command-line arguments with backwards compatibility."""
+    parser = create_parser()
+
+    # Handle backwards compatibility: bare URL without subcommand
+    if args and not args[0].startswith("-") and args[0] not in ("analyze", "record"):
+        # Assume it's a URL, prepend 'analyze'
+        args = ["analyze"] + args
+
     return parser.parse_args(args)
+
+
+async def run_analyze(url: str) -> int:
+    """Run the analyze command."""
+    logger.info(f"Analyzing URL: {url}")
+    result = await analyze_page(url)
+    print(result.to_json())
+    return 0
+
+
+async def run_record(url: str, output: str, timeout: int) -> int:
+    """Run the record command."""
+    # Placeholder - will be implemented in later tasks
+    print(
+        f"Recording not yet implemented. URL: {url}, Output: {output}", file=sys.stderr
+    )
+    return 1
 
 
 async def run_cli(args: list[str]) -> int:
@@ -48,14 +108,17 @@ async def run_cli(args: list[str]) -> int:
     except SystemExit as e:
         return e.code if e.code else 1
 
-    logger.info(f"Analyzing URL: {parsed.url}")
-    result = await analyze_page(parsed.url)
+    if parsed.command is None:
+        # No command and no args - show help
+        create_parser().print_help(sys.stderr)
+        return 1
 
-    # Output JSON to stdout
-    print(result.to_json())
+    if parsed.command == "analyze":
+        return await run_analyze(parsed.url)
+    elif parsed.command == "record":
+        return await run_record(parsed.url, parsed.output, parsed.timeout)
 
-    # Return 0 even with partial results (per spec)
-    return 0
+    return 1
 
 
 def main():
