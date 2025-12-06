@@ -117,8 +117,14 @@ async def run_record(
     )
 
     actions = []
-    stop_recording = False
     session = None
+
+    # Use an event to signal stop instead of a flag
+    stop_event = asyncio.Event()
+
+    def handle_sigint(signum, frame):
+        # Just set the event, don't print yet (will print after loop exits)
+        stop_event.set()
 
     try:
         session = RecordingSession(url, headed=not headless, settle_timeout=timeout)
@@ -128,42 +134,48 @@ async def run_record(
             # For testing - just return immediately after page loads
             logger.info("Running in headless mode - returning immediately")
         else:
-            # Set up signal handler to gracefully stop recording
-            def handle_sigint(signum, frame):
-                nonlocal stop_recording
-                stop_recording = True
-                print("\nStopping recording...", file=sys.stderr)
-
-            original_handler = signal.signal(signal.SIGINT, handle_sigint)
+            # Set up signal handler
+            signal.signal(signal.SIGINT, handle_sigint)
 
             try:
-                # Wait for Ctrl+C in headed mode
-                while not stop_recording:
-                    await asyncio.sleep(0.1)
-                    await session.process_pending_actions()
+                # Wait for stop event in headed mode
+                while not stop_event.is_set():
+                    # Use wait with timeout instead of sleep to check the event
+                    try:
+                        await asyncio.wait_for(stop_event.wait(), timeout=0.1)
+                    except TimeoutError:
+                        # Timeout is expected - process pending actions
+                        try:
+                            await session.process_pending_actions()
+                        except Exception:
+                            pass  # Ignore errors during periodic processing
             finally:
-                # Restore original signal handler
-                signal.signal(signal.SIGINT, original_handler)
+                # Restore original signal handler and ignore further interrupts during cleanup
+                signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+        print("\nStopping recording...", file=sys.stderr)
 
         # Process final pending actions and get results BEFORE closing
         try:
             await session.process_pending_actions()
-            actions = session.get_recorded_actions()
-            logger.info(f"Retrieved {len(actions)} recorded actions")
         except Exception as e:
-            logger.warning(f"Could not retrieve all actions: {e}")
-            # Still try to get whatever actions were recorded
-            actions = session.get_recorded_actions()
+            logger.warning(f"Could not process final actions: {e}")
 
-        # Now close the session
+        # Get recorded actions (this doesn't need page.evaluate)
+        actions = session.get_recorded_actions()
+        logger.info(f"Retrieved {len(actions)} recorded actions")
+
+        # Now close the session - ignore any errors
         try:
-            # Close browser directly without processing actions again
             if session._browser:
                 await session._browser.close()
+        except Exception:
+            pass
+        try:
             if session._playwright:
                 await session._playwright.stop()
-        except Exception as e:
-            logger.warning(f"Error during cleanup: {e}")
+        except Exception:
+            pass
 
         # Generate test even if no actions (creates basic test structure)
         logger.info(f"Generating test with {len(actions)} actions")
