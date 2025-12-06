@@ -180,9 +180,16 @@ async def run_record(
         # Fall through to cleanup and test generation below
 
     except Exception as e:
-        logger.error(f"Recording failed: {e}")
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
+        # Check if this is a browser-closed error from Ctrl+C during page load
+        error_str = str(e)
+        if "Target page, context or browser has been closed" in error_str:
+            # This is from Ctrl+C during page load - not a real error
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+            # Fall through to cleanup
+        else:
+            logger.error(f"Recording failed: {e}")
+            print(f"Error: {e}", file=sys.stderr)
+            return 1
 
     # === Cleanup and test generation (reached from normal exit or Ctrl+C) ===
     print("\nStopping recording...", file=sys.stderr)

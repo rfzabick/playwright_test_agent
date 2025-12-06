@@ -71,8 +71,9 @@ class RecordingSession:
         self._browser = await self._playwright.chromium.launch(headless=not self.headed)
         self._page = await self._browser.new_page()
 
-        # Navigate to URL
-        await self._page.goto(self.url, wait_until="networkidle")
+        # Navigate to URL - use "load" instead of "networkidle" for faster startup
+        # networkidle can take very long on complex sites like Reddit
+        await self._page.goto(self.url, wait_until="load")
         logger.info(f"Navigated to {self.url}")
 
         # Set up action tracking and change observation
