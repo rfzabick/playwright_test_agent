@@ -107,6 +107,16 @@ async def run_record(
     from js_interaction_detector.recorder.session import RecordingSession
     from js_interaction_detector.recorder.test_generator import generate_test
 
+    actions = []
+    session = None
+
+    # Use an event to signal stop instead of a flag
+    stop_event = asyncio.Event()
+
+    def handle_sigint(signum, frame):
+        # Just set the event - don't raise, don't print
+        stop_event.set()
+
     print(
         "Recording... interact with the page, then press Ctrl+C to finish",
         file=sys.stderr,
@@ -116,59 +126,79 @@ async def run_record(
         f"Starting recording session: url={url}, output={output}, timeout={timeout}, headless={headless}"
     )
 
-    actions = []
-    session = None
-
-    # Use an event to signal stop instead of a flag
-    stop_event = asyncio.Event()
-
-    def handle_sigint(signum, frame):
-        # Just set the event, don't print yet (will print after loop exits)
-        stop_event.set()
+    # Install signal handler BEFORE any async operations so Ctrl+C during
+    # page load doesn't cause a stack trace
+    if not headless:
+        signal.signal(signal.SIGINT, handle_sigint)
 
     try:
         session = RecordingSession(url, headed=not headless, settle_timeout=timeout)
+
+        # Check if we got interrupted during setup
+        if stop_event.is_set():
+            print("\nRecording cancelled.", file=sys.stderr)
+            return 0
+
         await session.__aenter__()
+
+        # Check again after page load
+        if stop_event.is_set():
+            print("\nRecording cancelled during page load.", file=sys.stderr)
+            # Clean up browser
+            try:
+                if session._browser:
+                    await session._browser.close()
+                if session._playwright:
+                    await session._playwright.stop()
+            except Exception:
+                pass
+            return 0
 
         if headless:
             # For testing - just return immediately after page loads
             logger.info("Running in headless mode - returning immediately")
         else:
-            # Set up signal handler
-            signal.signal(signal.SIGINT, handle_sigint)
-
-            try:
-                # Wait for stop event in headed mode
-                while not stop_event.is_set():
-                    # Use wait with timeout instead of sleep to check the event
+            # Wait for stop event in headed mode
+            while not stop_event.is_set():
+                # Use wait with timeout instead of sleep to check the event
+                try:
+                    await asyncio.wait_for(stop_event.wait(), timeout=0.1)
+                except TimeoutError:
+                    # Timeout is expected - process pending actions
                     try:
-                        await asyncio.wait_for(stop_event.wait(), timeout=0.1)
-                    except TimeoutError:
-                        # Timeout is expected - process pending actions
-                        try:
-                            await session.process_pending_actions()
-                        except Exception:
-                            pass  # Ignore errors during periodic processing
-            finally:
-                # Ignore further interrupts during cleanup
-                signal.signal(signal.SIGINT, signal.SIG_IGN)
+                        await session.process_pending_actions()
+                    except Exception:
+                        pass  # Ignore errors during periodic processing
 
-        print("\nStopping recording...", file=sys.stderr)
+        # Ignore further interrupts during cleanup
+        signal.signal(signal.SIGINT, signal.SIG_IGN)
 
-        # Try to process any final pending actions before browser closes
-        # This may fail if Ctrl+C triggered browser shutdown - that's OK,
-        # we already collected actions periodically during recording
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # Ctrl+C during async operations (e.g., during page load)
+        signal.signal(signal.SIGINT, signal.SIG_IGN)  # Ignore further interrupts
+        # Fall through to cleanup and test generation below
+
+    except Exception as e:
+        logger.error(f"Recording failed: {e}")
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    # === Cleanup and test generation (reached from normal exit or Ctrl+C) ===
+    print("\nStopping recording...", file=sys.stderr)
+
+    # Try to process any final pending actions before browser closes
+    if session:
         try:
             await session.process_pending_actions()
         except Exception:
             # Browser likely already closing - actions from last ~100ms may be lost
             pass
 
-        # Get recorded actions (this doesn't need page.evaluate)
+        # Get recorded actions
         actions = session.get_recorded_actions()
         logger.info(f"Retrieved {len(actions)} recorded actions")
 
-        # Now close the session - ignore any errors
+        # Close the session - ignore any errors
         try:
             if session._browser:
                 await session._browser.close()
@@ -180,32 +210,27 @@ async def run_record(
         except Exception:
             pass
 
-        # Generate test even if no actions (creates basic test structure)
-        logger.info(f"Generating test with {len(actions)} actions")
-        test_content = generate_test(url, actions)
+    # Generate test even if no actions (creates basic test structure)
+    logger.info(f"Generating test with {len(actions)} actions")
+    test_content = generate_test(url, actions)
 
-        # Write output
-        with open(output, "w") as f:
-            f.write(test_content)
-        logger.info(f"Test written to {output}")
+    # Write output
+    with open(output, "w") as f:
+        f.write(test_content)
+    logger.info(f"Test written to {output}")
 
-        if not actions:
-            print(
-                f"No actions recorded. Basic test structure written to: {output}",
-                file=sys.stderr,
-            )
-        else:
-            print(
-                f"Recorded {len(actions)} actions. Test written to: {output}",
-                file=sys.stderr,
-            )
+    if not actions:
+        print(
+            f"No actions recorded. Basic test structure written to: {output}",
+            file=sys.stderr,
+        )
+    else:
+        print(
+            f"Recorded {len(actions)} actions. Test written to: {output}",
+            file=sys.stderr,
+        )
 
-        return 0
-
-    except Exception as e:
-        logger.error(f"Recording failed: {e}")
-        print(f"Error: {e}", file=sys.stderr)
-        return 1
+    return 0
 
 
 async def run_cli(args: list[str]) -> int:
