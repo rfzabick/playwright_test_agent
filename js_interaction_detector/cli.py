@@ -150,16 +150,19 @@ async def run_record(
                         except Exception:
                             pass  # Ignore errors during periodic processing
             finally:
-                # Restore original signal handler and ignore further interrupts during cleanup
+                # Ignore further interrupts during cleanup
                 signal.signal(signal.SIGINT, signal.SIG_IGN)
 
         print("\nStopping recording...", file=sys.stderr)
 
-        # Process final pending actions and get results BEFORE closing
+        # Try to process any final pending actions before browser closes
+        # This may fail if Ctrl+C triggered browser shutdown - that's OK,
+        # we already collected actions periodically during recording
         try:
             await session.process_pending_actions()
-        except Exception as e:
-            logger.warning(f"Could not process final actions: {e}")
+        except Exception:
+            # Browser likely already closing - actions from last ~100ms may be lost
+            pass
 
         # Get recorded actions (this doesn't need page.evaluate)
         actions = session.get_recorded_actions()
