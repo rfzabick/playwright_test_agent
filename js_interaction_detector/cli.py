@@ -102,6 +102,8 @@ async def run_record(
     Returns:
         Exit code (0 for success, non-zero for errors)
     """
+    import signal
+
     from js_interaction_detector.recorder.session import RecordingSession
     from js_interaction_detector.recorder.test_generator import generate_test
 
@@ -114,6 +116,9 @@ async def run_record(
         f"Starting recording session: url={url}, output={output}, timeout={timeout}, headless={headless}"
     )
 
+    actions = []
+    stop_recording = False
+
     try:
         async with RecordingSession(
             url, headed=not headless, settle_timeout=timeout
@@ -121,18 +126,28 @@ async def run_record(
             if headless:
                 # For testing - just return immediately after page loads
                 logger.info("Running in headless mode - returning immediately")
-                pass
             else:
-                # Wait for Ctrl+C in headed mode
+                # Set up signal handler to gracefully stop recording
+                def handle_sigint(signum, frame):
+                    nonlocal stop_recording
+                    stop_recording = True
+                    print("\nStopping recording...", file=sys.stderr)
+
+                original_handler = signal.signal(signal.SIGINT, handle_sigint)
+
                 try:
-                    while True:
+                    # Wait for Ctrl+C in headed mode
+                    while not stop_recording:
                         await asyncio.sleep(0.1)
                         await session.process_pending_actions()
-                except asyncio.CancelledError:
-                    logger.info("Recording cancelled by user")
-                    pass
 
-            # Get recorded actions
+                    # Process any final pending actions
+                    await session.process_pending_actions()
+                finally:
+                    # Restore original signal handler
+                    signal.signal(signal.SIGINT, original_handler)
+
+            # Get recorded actions while session is still open
             actions = session.get_recorded_actions()
             logger.info(f"Retrieved {len(actions)} recorded actions")
 
