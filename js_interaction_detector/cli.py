@@ -140,6 +140,7 @@ async def run_record(
             return 0
 
         await session.__aenter__()
+        print("Page loaded. Recording your interactions...", file=sys.stderr)
 
         # Check again after page load
         if stop_event.is_set():
