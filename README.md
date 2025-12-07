@@ -44,6 +44,27 @@ Example with a local file:
 python -m js_interaction_detector file://$(pwd)/tests/fixtures/sample_pages/form_with_validation.html
 ```
 
+### Enumerate Interactive Elements
+
+Generate presence tests for all interactive elements on a page using the accessibility tree:
+
+```bash
+python -m js_interaction_detector enumerate https://example.com
+```
+
+This analyzes the page's accessibility tree and generates tests that verify each interactive element (buttons, links, inputs, etc.) is present and functional. Tests use Playwright's recommended `getByRole` locators for maximum stability.
+
+Options:
+- `--output FILE`, `-o FILE` - Output path for generated test (default: `./a11y-tests.spec.ts`)
+
+Example:
+
+```bash
+python -m js_interaction_detector enumerate http://localhost:8080 -o tests/a11y.spec.ts
+```
+
+**Note:** This generates v1 "presence tests" - they verify elements exist and are interactive, but don't test functionality or user flows. See the [design doc](docs/plans/2025-01-06-accessibility-enumeration-design.md) for the roadmap.
+
 ### Record Interactions
 
 Record user interactions and generate Playwright tests:
@@ -90,6 +111,27 @@ test('recorded interaction test', async ({ page }) => {
 ```
 
 **Note:** Recording is single-page only. If you click a link that navigates away, the tool automatically goes back to the original page.
+
+## Running Generated Tests
+
+The generated `.spec.ts` files are Playwright tests. To run them:
+
+```bash
+# Install Playwright test runner (one-time setup)
+npm init -y
+npm install -D @playwright/test
+npx playwright install chromium
+
+# Run tests
+npx playwright test my-tests.spec.ts
+
+# Run with visible browser
+npx playwright test my-tests.spec.ts --headed
+
+# Generate HTML report
+npx playwright test my-tests.spec.ts --reporter=html
+npx playwright show-report
+```
 
 ## Development
 

@@ -38,3 +38,15 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Node.js (for running generated Playwright tests)
+node_modules/
+package.json
+package-lock.json
+
+# Playwright test artifacts
+test-results/
+playwright-report/
+
+# Generated test files (output of this tool)
+*.spec.ts

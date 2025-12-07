@@ -65,6 +65,22 @@ def create_parser() -> argparse.ArgumentParser:
         help="Run in headless mode (for testing)",
     )
 
+    # enumerate subcommand
+    enumerate_parser = subparsers.add_parser(
+        "enumerate",
+        help="Enumerate interactive elements and generate presence tests",
+    )
+    enumerate_parser.add_argument(
+        "url",
+        help="URL to enumerate (http, https, or file://)",
+    )
+    enumerate_parser.add_argument(
+        "--output",
+        "-o",
+        default="./a11y-tests.spec.ts",
+        help="Output path for generated test (default: ./a11y-tests.spec.ts)",
+    )
+
     return parser
 
 
@@ -73,7 +89,7 @@ def parse_args(args: list[str]) -> argparse.Namespace:
     parser = create_parser()
 
     # Handle backwards compatibility: bare URL without subcommand
-    if args and not args[0].startswith("-") and args[0] not in ("analyze", "record"):
+    if args and not args[0].startswith("-") and args[0] not in ("analyze", "record", "enumerate"):
         # Assume it's a URL, prepend 'analyze'
         args = ["analyze"] + args
 
@@ -241,6 +257,83 @@ async def run_record(
     return 0
 
 
+async def run_enumerate(url: str, output: str) -> int:
+    """Run the enumerate command.
+
+    Args:
+        url: URL to enumerate
+        output: Output path for generated test
+
+    Returns:
+        Exit code (0 for success, non-zero for errors)
+    """
+    from playwright.async_api import async_playwright
+
+    from js_interaction_detector.enumerator import (
+        extract_interactive_elements,
+        generate_enumeration_tests,
+    )
+
+    print(f"Analyzing {url}...", file=sys.stderr)
+    logger.info(f"Starting enumeration for {url}")
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(
+                headless=True,
+                args=["--disable-blink-features=AutomationControlled"],
+            )
+            # Use realistic browser settings to avoid bot detection
+            context = await browser.new_context(
+                user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                viewport={"width": 1920, "height": 1080},
+            )
+            page = await context.new_page()
+
+            await page.goto(url, wait_until="load")
+            logger.info(f"Page loaded: {url}")
+
+            elements = await extract_interactive_elements(page)
+
+            await browser.close()
+
+    except Exception as e:
+        logger.error(f"Failed to enumerate page: {e}")
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+    # Count elements by role for summary
+    role_counts: dict[str, int] = {}
+    for el in elements:
+        role_counts[el.role] = role_counts.get(el.role, 0) + 1
+
+    # Generate tests
+    test_content, warnings = generate_enumeration_tests(url, elements)
+
+    # Write output
+    with open(output, "w") as f:
+        f.write(test_content)
+
+    # Print summary
+    print(f"Found {len(elements)} interactive elements:", file=sys.stderr)
+    for role, count in sorted(role_counts.items()):
+        print(f"  - {count} {role}(s)", file=sys.stderr)
+    print(file=sys.stderr)
+
+    # Count elements with names (that got tests generated)
+    named_count = sum(1 for el in elements if el.has_name())
+    print(f"Generated {named_count} tests in {output}", file=sys.stderr)
+
+    # Print warnings
+    if warnings:
+        print(file=sys.stderr)
+        print("Warnings:", file=sys.stderr)
+        for warning in warnings:
+            print(f"  - {warning}", file=sys.stderr)
+
+    return 0
+
+
 async def run_cli(args: list[str]) -> int:
     """Run the CLI with the given arguments.
 
@@ -268,6 +361,8 @@ async def run_cli(args: list[str]) -> int:
         return await run_record(
             parsed.url, parsed.output, parsed.timeout, parsed.headless
         )
+    elif parsed.command == "enumerate":
+        return await run_enumerate(parsed.url, parsed.output)
 
     return 1
 
