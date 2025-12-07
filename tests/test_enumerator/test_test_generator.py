@@ -1,7 +1,5 @@
 """Tests for enumeration test generator."""
 
-import pytest
-
 from js_interaction_detector.enumerator.extractor import AccessibilityElement
 from js_interaction_detector.enumerator.test_generator import (
     escape_string,
@@ -40,7 +38,7 @@ class TestGenerateButtonTest:
         el = AccessibilityElement(role="button", name="Submit")
         code = generate_button_test(el)
 
-        assert "button \"Submit\" is interactive" in code
+        assert 'button "Submit" is interactive' in code
         assert "getByRole('button', { name: 'Submit' })" in code
         assert "toBeVisible()" in code
         assert "toBeEnabled()" in code
@@ -57,7 +55,7 @@ class TestGenerateButtonTest:
         el = AccessibilityElement(role="button", name="Submit")
         code = generate_button_test(el, index=2)
 
-        assert "button \"Submit\" (2)" in code
+        assert 'button "Submit" (2)' in code
 
 
 class TestGenerateLinkTest:
@@ -68,7 +66,7 @@ class TestGenerateLinkTest:
         el = AccessibilityElement(role="link", name="Click here")
         code = generate_link_test(el)
 
-        assert "link \"Click here\" is present" in code
+        assert 'link "Click here" is present' in code
         assert "getByRole('link', { name: 'Click here' })" in code
         assert "toHaveAttribute('href'" in code
 
@@ -81,7 +79,7 @@ class TestGenerateTextboxTest:
         el = AccessibilityElement(role="textbox", name="Email")
         code = generate_textbox_test(el)
 
-        assert "textbox \"Email\" accepts input" in code
+        assert 'textbox "Email" accepts input' in code
         assert "getByRole('textbox', { name: 'Email' })" in code
         assert "toBeEditable()" in code
         assert "fill('test input')" in code
@@ -92,7 +90,7 @@ class TestGenerateTextboxTest:
         el = AccessibilityElement(role="searchbox", name="Search")
         code = generate_textbox_test(el)
 
-        assert "searchbox \"Search\" accepts input" in code
+        assert 'searchbox "Search" accepts input' in code
         assert "getByRole('searchbox', { name: 'Search' })" in code
 
 
@@ -104,7 +102,7 @@ class TestGenerateCheckboxTest:
         el = AccessibilityElement(role="checkbox", name="Remember me")
         code = generate_checkbox_test(el)
 
-        assert "checkbox \"Remember me\" is toggleable" in code
+        assert 'checkbox "Remember me" is toggleable' in code
         assert "getByRole('checkbox', { name: 'Remember me' })" in code
         assert "check()" in code
         assert "toBeChecked()" in code
@@ -166,8 +164,8 @@ class TestGenerateEnumerationTests:
 
         content, warnings = generate_enumeration_tests("http://example.com", elements)
 
-        assert "button \"Submit\" (1)" in content
-        assert "button \"Submit\" (2)" in content
+        assert 'button "Submit" (1)' in content
+        assert 'button "Submit" (2)' in content
 
     def test_returns_empty_tests_for_no_named_elements(self):
         """Returns minimal test file when no named elements."""

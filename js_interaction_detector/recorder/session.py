@@ -1,5 +1,6 @@
 """Recording session that orchestrates action tracking and change observation."""
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from typing import Any
@@ -136,8 +137,6 @@ class RecordingSession:
         if current_url != self._original_url and not current_url.startswith("about:"):
             logger.info(f"Navigation detected to {current_url}, going back")
             # Schedule the async go_back operation
-            import asyncio
-
             asyncio.create_task(self._handle_navigation_async())
 
     async def _handle_navigation_async(self) -> None:

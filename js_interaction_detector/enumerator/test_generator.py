@@ -45,7 +45,7 @@ def generate_button_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"button \"{element.name}\""
+    test_name = f'button "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -72,7 +72,7 @@ def generate_link_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"link \"{element.name}\""
+    test_name = f'link "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -100,7 +100,7 @@ def generate_textbox_test(
     """
     name = escape_string(element.name)
     role = element.role  # Could be 'textbox' or 'searchbox'
-    test_name = f"{role} \"{element.name}\""
+    test_name = f'{role} "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -129,7 +129,7 @@ def generate_checkbox_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"checkbox \"{element.name}\""
+    test_name = f'checkbox "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -157,7 +157,7 @@ def generate_radio_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"radio \"{element.name}\""
+    test_name = f'radio "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -186,7 +186,7 @@ def generate_combobox_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"combobox \"{element.name}\""
+    test_name = f'combobox "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -213,7 +213,7 @@ def generate_slider_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"slider \"{element.name}\""
+    test_name = f'slider "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -240,7 +240,7 @@ def generate_switch_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"switch \"{element.name}\""
+    test_name = f'switch "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -267,7 +267,7 @@ def generate_tab_test(
         TypeScript test code
     """
     name = escape_string(element.name)
-    test_name = f"tab \"{element.name}\""
+    test_name = f'tab "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 
@@ -295,7 +295,7 @@ def generate_generic_test(
     """
     name = escape_string(element.name)
     role = element.role
-    test_name = f"{role} \"{element.name}\""
+    test_name = f'{role} "{element.name}"'
     if index is not None:
         test_name += f" ({index})"
 

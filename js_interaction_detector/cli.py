@@ -3,9 +3,18 @@
 import argparse
 import asyncio
 import logging
+import signal
 import sys
 
+from playwright.async_api import async_playwright
+
 from js_interaction_detector.analyzer import analyze_page
+from js_interaction_detector.enumerator import (
+    extract_interactive_elements,
+    generate_enumeration_tests,
+)
+from js_interaction_detector.recorder.session import RecordingSession
+from js_interaction_detector.recorder.test_generator import generate_test
 
 logger = logging.getLogger(__name__)
 
@@ -89,7 +98,11 @@ def parse_args(args: list[str]) -> argparse.Namespace:
     parser = create_parser()
 
     # Handle backwards compatibility: bare URL without subcommand
-    if args and not args[0].startswith("-") and args[0] not in ("analyze", "record", "enumerate"):
+    if (
+        args
+        and not args[0].startswith("-")
+        and args[0] not in ("analyze", "record", "enumerate")
+    ):
         # Assume it's a URL, prepend 'analyze'
         args = ["analyze"] + args
 
@@ -118,11 +131,6 @@ async def run_record(
     Returns:
         Exit code (0 for success, non-zero for errors)
     """
-    import signal
-
-    from js_interaction_detector.recorder.session import RecordingSession
-    from js_interaction_detector.recorder.test_generator import generate_test
-
     actions = []
     session = None
 
@@ -267,13 +275,6 @@ async def run_enumerate(url: str, output: str) -> int:
     Returns:
         Exit code (0 for success, non-zero for errors)
     """
-    from playwright.async_api import async_playwright
-
-    from js_interaction_detector.enumerator import (
-        extract_interactive_elements,
-        generate_enumeration_tests,
-    )
-
     print(f"Analyzing {url}...", file=sys.stderr)
     logger.info(f"Starting enumeration for {url}")
 

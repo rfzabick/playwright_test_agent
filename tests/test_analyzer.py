@@ -1,5 +1,6 @@
 """Tests for the main analyzer."""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -48,8 +49,6 @@ class TestAnalyzer:
         assert self.result.interactions == []
 
     def then_result_serializes_to_json(self):
-        import json
-
         json_str = self.result.to_json()
         parsed = json.loads(json_str)
         assert parsed["url"] == self.url

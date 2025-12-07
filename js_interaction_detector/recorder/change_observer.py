@@ -15,20 +15,37 @@ from js_interaction_detector.recorder.test_generator import (
 logger = logging.getLogger(__name__)
 
 # Elements to ignore - these are usually noise, not user-meaningful changes
-IGNORED_TAGS = frozenset({
-    "script", "style", "link", "meta", "noscript",  # Document structure
-    "iframe",  # Embedded content (ads, tracking)
-    "time",  # Timestamps update frequently
-    "hr", "br",  # Decorative elements
-    "svg", "path", "g", "circle", "rect", "line", "polygon", "polyline",  # SVG internals
-    "img",  # Images loading is noise
-    "source", "picture",  # Media elements
-    "canvas",  # Canvas elements
-    "slot",  # Web components slots
-    # Common loader/spinner patterns
-    "faceplate-loader", "faceplate-partial", "shreddit-loading",
-    "ac-track",  # Analytics
-})
+IGNORED_TAGS = frozenset(
+    {
+        "script",
+        "style",
+        "link",
+        "meta",
+        "noscript",  # Document structure
+        "iframe",  # Embedded content (ads, tracking)
+        "time",  # Timestamps update frequently
+        "hr",
+        "br",  # Decorative elements
+        "svg",
+        "path",
+        "g",
+        "circle",
+        "rect",
+        "line",
+        "polygon",
+        "polyline",  # SVG internals
+        "img",  # Images loading is noise
+        "source",
+        "picture",  # Media elements
+        "canvas",  # Canvas elements
+        "slot",  # Web components slots
+        # Common loader/spinner patterns
+        "faceplate-loader",
+        "faceplate-partial",
+        "shreddit-loading",
+        "ac-track",  # Analytics
+    }
+)
 
 # JavaScript to inject MutationObserver
 MUTATION_OBSERVER_SCRIPT = """
@@ -226,7 +243,9 @@ class ChangeObserver:
                 dedup_key = f"{req['method']}:{pattern}"
                 if dedup_key not in self._seen_api_patterns:
                     self._seen_api_patterns.add(dedup_key)
-                    changes.append(NetworkRequest(method=req["method"], url_pattern=pattern))
+                    changes.append(
+                        NetworkRequest(method=req["method"], url_pattern=pattern)
+                    )
                     api_request_count += 1
                     logger.info(f"API request: {req['method']} {pattern}")
 
@@ -243,16 +262,41 @@ class ChangeObserver:
         # Exclude patterns - be aggressive about filtering noise
         exclude_patterns = [
             # Static assets
-            ".js", ".css", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico",
-            ".woff", ".woff2", ".ttf", ".eot", ".map",
-            ".webp", ".avif", ".mp4", ".webm",
-            "/static/", "/assets/", "/images/", "/fonts/",
+            ".js",
+            ".css",
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".svg",
+            ".ico",
+            ".woff",
+            ".woff2",
+            ".ttf",
+            ".eot",
+            ".map",
+            ".webp",
+            ".avif",
+            ".mp4",
+            ".webm",
+            "/static/",
+            "/assets/",
+            "/images/",
+            "/fonts/",
             # Third-party tracking/analytics
-            "google.com", "facebook.com", "twitter.com", "analytics",
-            "recaptcha", "captcha", "tracking", "beacon",
+            "google.com",
+            "facebook.com",
+            "twitter.com",
+            "analytics",
+            "recaptcha",
+            "captcha",
+            "tracking",
+            "beacon",
             # Reddit-specific noise
-            "preview.redd.it", "external-preview.redd.it",
-            "styles.redditmedia.com", "www.redditstatic.com",
+            "preview.redd.it",
+            "external-preview.redd.it",
+            "styles.redditmedia.com",
+            "www.redditstatic.com",
             "emoji.redditmedia.com",  # Emoji CDN
             "w3-reporting.reddit.com",  # W3C reporting
             "alb.reddit.com",  # Load balancer tracking
@@ -291,9 +335,7 @@ class ChangeObserver:
         # For external URLs, keep domain + path for clarity
         return url
 
-    def _process_attribute_mutation(
-        self, mutation: dict[str, Any]
-    ) -> CSSChange | None:
+    def _process_attribute_mutation(self, mutation: dict[str, Any]) -> CSSChange | None:
         """Process an attribute mutation into a CSSChange.
 
         Args:

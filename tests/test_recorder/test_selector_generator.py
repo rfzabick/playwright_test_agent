@@ -1,5 +1,7 @@
 """Tests for selector generation."""
 
+from js_interaction_detector.recorder.selector_generator import generate_selector
+
 
 class TestSelectorGenerator:
     def given_element_with_testid(self):
@@ -37,10 +39,6 @@ class TestSelectorGenerator:
         }
 
     def when_selector_is_generated(self):
-        from js_interaction_detector.recorder.selector_generator import (
-            generate_selector,
-        )
-
         self.selector, self.is_fragile = generate_selector(self.element_info)
 
     def then_selector_is(self, expected):

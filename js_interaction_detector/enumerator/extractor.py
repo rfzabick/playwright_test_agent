@@ -9,21 +9,23 @@ from playwright.async_api import Page
 logger = logging.getLogger(__name__)
 
 # Roles that represent interactive elements
-INTERACTIVE_ROLES = frozenset({
-    "button",
-    "link",
-    "textbox",
-    "checkbox",
-    "radio",
-    "combobox",
-    "slider",
-    "switch",
-    "menuitem",
-    "tab",
-    "searchbox",
-    "spinbutton",
-    "option",
-})
+INTERACTIVE_ROLES = frozenset(
+    {
+        "button",
+        "link",
+        "textbox",
+        "checkbox",
+        "radio",
+        "combobox",
+        "slider",
+        "switch",
+        "menuitem",
+        "tab",
+        "searchbox",
+        "spinbutton",
+        "option",
+    }
+)
 
 
 @dataclass
