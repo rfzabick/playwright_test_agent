@@ -5,6 +5,7 @@ import asyncio
 import logging
 import signal
 import sys
+from pathlib import Path
 
 from playwright.async_api import async_playwright
 
@@ -13,6 +14,10 @@ from js_interaction_detector.enumerator import (
     extract_interactive_elements,
     generate_enumeration_tests,
 )
+from js_interaction_detector.functional_tester.instrumentation import (
+    generate_instrumentation_script,
+)
+from js_interaction_detector.functional_tester.usage_detector import detect_usage
 from js_interaction_detector.recorder.session import RecordingSession
 from js_interaction_detector.recorder.test_generator import generate_test
 
@@ -90,6 +95,40 @@ def create_parser() -> argparse.ArgumentParser:
         help="Output path for generated test (default: ./a11y-tests.spec.ts)",
     )
 
+    # functional subcommand group
+    functional_parser = subparsers.add_parser(
+        "functional",
+        help="Analyze and test functional library APIs",
+    )
+    functional_subparsers = functional_parser.add_subparsers(
+        dest="functional_command",
+        help="Functional testing commands",
+    )
+
+    # functional analyze
+    func_analyze = functional_subparsers.add_parser(
+        "analyze",
+        help="Analyze source code for library usage",
+    )
+    func_analyze.add_argument(
+        "--library",
+        "-l",
+        required=True,
+        help="Library name to analyze (e.g., 'lodash')",
+    )
+    func_analyze.add_argument(
+        "--source",
+        "-s",
+        required=True,
+        help="Source directory to analyze",
+    )
+    func_analyze.add_argument(
+        "--output",
+        "-o",
+        default="./instrumentation.js",
+        help="Output path for instrumentation script",
+    )
+
     return parser
 
 
@@ -101,7 +140,7 @@ def parse_args(args: list[str]) -> argparse.Namespace:
     if (
         args
         and not args[0].startswith("-")
-        and args[0] not in ("analyze", "record", "enumerate")
+        and args[0] not in ("analyze", "record", "enumerate", "functional")
     ):
         # Assume it's a URL, prepend 'analyze'
         args = ["analyze"] + args
@@ -265,6 +304,58 @@ async def run_record(
     return 0
 
 
+async def run_functional_analyze(library: str, source: str, output: str) -> int:
+    """Run the functional analyze command.
+
+    Args:
+        library: Library name to analyze
+        source: Source directory path
+        output: Output path for instrumentation script
+
+    Returns:
+        Exit code
+    """
+    source_path = Path(source)
+    if not source_path.exists():
+        print(f"Error: Source directory not found: {source}", file=sys.stderr)
+        return 1
+
+    print(f"Analyzing {source} for {library} usage...", file=sys.stderr)
+
+    # Detect usage
+    call_sites = detect_usage(source_path, library)
+
+    if not call_sites:
+        print(f"No usage of {library} found in {source}", file=sys.stderr)
+        return 0
+
+    # Summarize findings
+    function_names = sorted({cs.function_name for cs in call_sites})
+    print(f"\nFound {len(call_sites)} call sites:", file=sys.stderr)
+    for fn in function_names:
+        count = sum(1 for cs in call_sites if cs.function_name == fn)
+        print(f"  - {fn}: {count} calls", file=sys.stderr)
+
+    # Count static vs dynamic
+    static_count = sum(1 for cs in call_sites if cs.has_static_args)
+    dynamic_count = len(call_sites) - static_count
+    print(f"\nStatic arguments: {static_count}", file=sys.stderr)
+    print(f"Dynamic arguments: {dynamic_count}", file=sys.stderr)
+
+    # Generate instrumentation script
+    script = generate_instrumentation_script(library, function_names)
+    with open(output, "w") as f:
+        f.write(script)
+
+    print(f"\nInstrumentation script written to: {output}", file=sys.stderr)
+    print(
+        "Inject this into your dev environment to capture runtime values.",
+        file=sys.stderr,
+    )
+
+    return 0
+
+
 async def run_enumerate(url: str, output: str) -> int:
     """Run the enumerate command.
 
@@ -364,6 +455,14 @@ async def run_cli(args: list[str]) -> int:
         )
     elif parsed.command == "enumerate":
         return await run_enumerate(parsed.url, parsed.output)
+    elif parsed.command == "functional":
+        if parsed.functional_command == "analyze":
+            return await run_functional_analyze(
+                parsed.library, parsed.source, parsed.output
+            )
+        else:
+            print("Unknown functional command", file=sys.stderr)
+            return 1
 
     return 1
 

@@ -201,3 +201,37 @@ class TestRecordCommand:
         self.given_record_command_with_simple_page(fixtures_path, tmp_path)
         await self.when_cli_is_run_capturing_output(capsys)
         self.then_stderr_mentions_recording()
+
+
+class TestFunctionalCommand:
+    """Tests for the functional API testing command."""
+
+    @pytest.fixture
+    def sample_js_dir(self, tmp_path):
+        """Create a sample JS directory with lodash usage."""
+        js_file = tmp_path / "src" / "utils.js"
+        js_file.parent.mkdir(parents=True)
+        js_file.write_text("""
+import { groupBy } from 'lodash';
+
+const users = [{ name: 'alice', age: 30 }];
+const byAge = groupBy(users, 'age');
+""")
+        return tmp_path
+
+    async def test_functional_analyze_finds_usage(self, sample_js_dir, capsys):
+        """functional analyze command finds library usage."""
+        exit_code = await run_cli(
+            [
+                "functional",
+                "analyze",
+                "--library",
+                "lodash",
+                "--source",
+                str(sample_js_dir / "src"),
+            ]
+        )
+
+        captured = capsys.readouterr()
+        assert exit_code == 0
+        assert "groupBy" in captured.err  # Summary goes to stderr
