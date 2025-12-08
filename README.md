@@ -65,6 +65,32 @@ python -m js_interaction_detector enumerate http://localhost:8080 -o tests/a11y.
 
 **Note:** This generates v1 "presence tests" - they verify elements exist and are interactive, but don't test functionality or user flows. See the [design doc](docs/plans/2025-01-06-accessibility-enumeration-design.md) for the roadmap.
 
+### Analyze Library Usage (Functional APIs)
+
+Analyze your source code for library usage and generate tests:
+
+```bash
+python -m js_interaction_detector functional analyze --library lodash --source ./src
+```
+
+This:
+1. Scans your source for imports and calls to the specified library
+2. Reports which functions are used and how often
+3. Generates an instrumentation script to capture runtime values
+
+To capture runtime values:
+1. Inject the generated `instrumentation.js` into your dev environment
+2. Use your app normally, triggering the library calls
+3. Copy the test code from the browser console
+4. Paste into your test file
+
+Options:
+- `--library`, `-l` - Library name to analyze (required)
+- `--source`, `-s` - Source directory to scan (required)
+- `--output`, `-o` - Output path for instrumentation script (default: `./instrumentation.js`)
+
+**Note:** This is Tool A of the functional API tester - it focuses on pure functions with input/output relationships. Tool B (side-effect APIs) is planned for a future release.
+
 ### Record Interactions
 
 Record user interactions and generate Playwright tests:
